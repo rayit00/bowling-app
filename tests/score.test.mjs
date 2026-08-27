@@ -1,5 +1,6 @@
 // tests/score.test.mjs — phase 1 test gate: node tests/score.test.mjs
 import { scoreGame, frameStats } from '../js/score.js';
+import { frameState } from '../js/game-ui.js';
 
 let pass = 0, fail = 0;
 function eq(name, got, want) {
@@ -78,6 +79,18 @@ eq('10th: 0 spares', t2s.spares, 0);
 const t3s = frameStats(nine([0, 0]).concat([[10, 10, 0]]));
 eq('X X 0: 2 strikes', t3s.strikes, 2);
 eq('X X 0: 0 spares', t3s.spares, 0);
+
+// frameState: 10th-frame completion (regression — "Game complete ✓" shown
+// for a lone 10th-frame strike, then Save rejected it)
+eq('state: 10th strike 1 roll needs roll 2', frameState(nine([0, 0]).concat([[10]])), [9, 1]);
+eq('state: 10th open 1 roll needs roll 2', frameState(nine([0, 0]).concat([[7]])), [9, 1]);
+eq('state: 10th strike 2 rolls needs roll 3', frameState(nine([0, 0]).concat([[10, 5]])), [9, 2]);
+eq('state: 10th spare 2 rolls needs roll 3', frameState(nine([0, 0]).concat([[7, 3]])), [9, 2]);
+eq('state: 10th open 2 rolls complete', frameState(nine([0, 0]).concat([[7, 2]])), null);
+eq('state: 10th strike 3 rolls complete', frameState(nine([0, 0]).concat([[10, 10, 10]])), null);
+eq('state: 10th spare 3 rolls complete', frameState(nine([0, 0]).concat([[7, 3, 5]])), null);
+eq('state: mid-game open frame 1 roll', frameState([[7], ...nine([0, 0]).slice(0, 8), [0, 0]]), [0, 1]);
+eq('state: empty game starts at f1 r1', frameState(ten([])), [0, 0]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

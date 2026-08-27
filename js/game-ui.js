@@ -8,7 +8,7 @@ function emptyFrames() {
   return Array.from({ length: 10 }, () => []);
 }
 
-function frameState(frames) {
+export function frameState(frames) {
   // [frameIdx, rollIdx] of next roll to enter
   for (let f = 0; f < 10; f++) {
     const fr = frames[f];
@@ -17,8 +17,12 @@ function frameState(frames) {
       if (fr[0] !== 10 && fr.length === 1) return [f, 1];
     } else {
       if (fr.length === 0) return [9, 0];
-      if (fr[0] !== 10 && fr[0] + fr[1] < 10) return [9, 1];
-      if (fr.length === 2 && (fr[0] === 10 || fr[0] + fr[1] === 10)) return [9, 2];
+      if (fr.length === 1) return [9, 1]; // strike OR open first roll: always need roll 2
+      if (fr.length === 2) {
+        if (fr[0] === 10) return [9, 2];      // strike: always exactly 3 rolls
+        if (fr[0] + fr[1] === 10) return [9, 2]; // spare: one bonus roll
+      }
+      return null; // open frame with 2 rolls: complete
     }
   }
   return null; // complete
