@@ -1,5 +1,5 @@
 // sw.js — BowlTrack service worker: precache app shell, cache-first.
-const CACHE = 'bowltrack-v3';
+const CACHE = 'bowltrack-v4';
 const ASSETS = [
   'index.html',
   'manifest.json',

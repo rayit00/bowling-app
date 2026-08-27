@@ -3,6 +3,7 @@
 //   renderGameForm(el, game, onDone)   — new/edit form: meta + frame grid + number pad
 //   renderGameDetail(el, game, {onEdit, onDelete, onBack}) — scorecard + stats + notes
 import { scoreGame, frameStats } from './score.js';
+import { loadPref, savePref } from './store.js';
 
 function emptyFrames() {
   return Array.from({ length: 10 }, () => []);
@@ -41,14 +42,14 @@ export function renderGameForm(el, game, onDone) {
   };
   let frames = g.frames.map((fr) => [...fr]);
   const meta = { date: g.date, alley: g.alley, lane: g.lane, session: g.session, notes: g.notes };
-  let doneFlag = false;
+  let glyphMode = loadPref('glyphMode', true); // default: pin symbols (X / G)
 
   el.innerHTML = `
     <div class="page">
       <div class="page-head">
         <button class="back" data-act="back">←</button>
         <h2>${isNew ? 'New Game' : 'Edit Game'}</h2>
-        <span class="spacer"></span>
+        <button class="ghost" id="f-glyph" title="Toggle pin symbols / numbers">🎳 X / G</button>
       </div>
       <div class="meta-grid">
         <label>Date<input type="date" id="f-date" value="${meta.date}"></label>
@@ -70,6 +71,13 @@ export function renderGameForm(el, game, onDone) {
   const pad = el.querySelector('#f-pad');
   const errEl = el.querySelector('#f-err');
 
+  function cellText(f, s) {
+    const v = frames[f][s];
+    if (v === undefined) return '';
+    if (!glyphMode) return String(v); // plain numbers
+    return rollLabel(f, frames[f])[s] ?? String(v); // X / G symbols
+  }
+
   function drawCard() {
     const pos = frameState(frames);
     let html = '<div class="frames">';
@@ -79,7 +87,7 @@ export function renderGameForm(el, game, onDone) {
       let cells = '';
       for (const s of slots) {
         const active = pos && pos[0] === f && pos[1] === s;
-        cells += `<div class="cell ${active ? 'active' : ''}" data-f="${f}" data-s="${s}">${fr[s] !== undefined ? fr[s] : ''}</div>`;
+        cells += `<div class="cell ${active ? 'active' : ''}" data-f="${f}" data-s="${s}">${cellText(f, s)}</div>`;
       }
       html += `<div class="frame f${f + 1}">${cells}</div>`;
     }
@@ -145,6 +153,18 @@ export function renderGameForm(el, game, onDone) {
   });
 
   el.querySelector('[data-act="back"]').addEventListener('click', () => onDone(null, true));
+  el.querySelector('#f-glyph').addEventListener('click', () => {
+    glyphMode = !glyphMode;
+    savePref('glyphMode', glyphMode);
+    syncGlyphBtn();
+    draw();
+  });
+  function syncGlyphBtn() {
+    const b = el.querySelector('#f-glyph');
+    b.textContent = glyphMode ? '🎳 X / G' : '🔢 123';
+    b.classList.toggle('on', glyphMode);
+  }
+  syncGlyphBtn();
   el.querySelector('#f-clear').addEventListener('click', () => {
     if (confirm('Clear all rolls?')) {
       frames = emptyFrames();

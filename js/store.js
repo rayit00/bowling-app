@@ -17,3 +17,26 @@ export function loadAll() {
 export function saveAll(games) {
   localStorage.setItem(KEY, JSON.stringify(games));
 }
+
+const PREF_KEY = 'bowling_prefs_v1';
+
+export function loadPref(name, def) {
+  try {
+    const raw = localStorage.getItem(PREF_KEY);
+    const p = raw ? JSON.parse(raw) : {};
+    return p[name] !== undefined ? p[name] : def;
+  } catch {
+    return def;
+  }
+}
+
+export function savePref(name, value) {
+  try {
+    const raw = localStorage.getItem(PREF_KEY);
+    const p = raw ? JSON.parse(raw) : {};
+    p[name] = value;
+    localStorage.setItem(PREF_KEY, JSON.stringify(p));
+  } catch {
+    // non-fatal: pref just won't persist
+  }
+}
