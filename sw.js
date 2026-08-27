@@ -1,5 +1,6 @@
-// sw.js — BowlTrack service worker: precache app shell, cache-first.
-const CACHE = 'bowltrack-v4';
+// sw.js — BowlTrack service worker: precache app shell, network-first with
+// cache fallback (offline at the alley still works; online always gets fresh code).
+const CACHE = 'bowltrack-v5';
 const ASSETS = [
   'index.html',
   'manifest.json',
@@ -31,19 +32,20 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  const sameOrigin = e.request.url.startsWith(self.location.origin);
+  // no-cache: revalidate with server so deploys are picked up immediately
+  // (GitHub Pages answers revalidation with cheap 304s); offline -> cache.
   e.respondWith(
-    caches.match(e.request).then(
-      (hit) =>
-        hit ||
-        fetch(e.request)
-          .then((res) => {
-            if (res.ok && e.request.url.startsWith(self.location.origin)) {
-              const copy = res.clone();
-              caches.open(CACHE).then((c) => c.put(e.request, copy));
-            }
-            return res;
-          })
-          .catch(() => caches.match('index.html'))
-    )
+    fetch(e.request, sameOrigin ? { cache: 'no-cache' } : undefined)
+      .then((res) => {
+        if (res.ok && sameOrigin) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      })
+      .catch(() =>
+        caches.match(e.request).then((hit) => hit || caches.match('index.html'))
+      )
   );
 });
