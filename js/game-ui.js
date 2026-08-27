@@ -29,6 +29,29 @@ export function frameState(frames) {
   return null; // complete
 }
 
+export function standingPins(frames, f, s) {
+  // how many pins are standing on the rack for the upcoming roll
+  const fr = frames[f];
+  if (s === 0) return 10;
+  const prev = fr[s - 1];
+  if (f < 9) {
+    if (prev === 10) return 0; // strike: frame over
+    return 10 - prev;
+  }
+  // 10th frame
+  if (s === 1) {
+    if (prev === 10) return 10; // strike: fresh rack
+    return 10 - prev;
+  }
+  if (s === 2) {
+    const a = fr[0], b = fr[1];
+    if (a === 10) return b === 10 ? 10 : 10 - b;
+    if (a + b === 10) return 10; // spare: fresh rack
+    return 0; // open: frame over
+  }
+  return 0;
+}
+
 export function renderGameForm(el, game, onDone) {
   const isNew = !game;
   const g = game || {
@@ -104,6 +127,60 @@ export function renderGameForm(el, game, onDone) {
       return;
     }
     const [f, s] = pos;
+    const standing = standingPins(frames, f, s);
+    const knocked = new Set();
+    let pins = '';
+    for (let p = 1; p <= 10; p++) {
+      const up = p <= standing;
+      pins += `<div class="pin ${up ? 'up' : 'down'}" data-p="${p}">${up ? '🎳' : '·'}</div>`;
+    }
+    pad.innerHTML = `
+      <div class="pad-label">Frame ${f + 1} · roll ${s + 1} — tap the pins you knock down</div>
+      <div class="rack">
+        <div class="rack-row">${pins.slice(0, 4)}</div>
+        <div class="rack-row">${pins.slice(4, 8)}</div>
+        <div class="rack-row">${pins.slice(8, 10)}</div>
+      </div>
+      <div class="form-row rack-actions">
+        <button class="primary" id="roll-btn">Roll ${knocked.size}</button>
+        <button class="ghost" id="reset-btn">Reset rack</button>
+      </div>
+      <button class="pad-toggle" id="pad-toggle">✏️ Type a number instead</button>
+      <div class="pad-num" id="pad-num" hidden></div>`;
+    drawNumPad(f, s);
+    pad.querySelector('#pad-toggle').addEventListener('click', () => {
+      const num = pad.querySelector('#pad-num');
+      num.hidden = !num.hidden;
+      pad.querySelector('#pad-toggle').textContent = num.hidden
+        ? '✏️ Type a number instead'
+        : '🎳 Use the pin rack';
+    });
+    pad.querySelector('.rack').addEventListener('click', (e) => {
+      const pin = e.target.closest('.pin');
+      if (!pin) return;
+      const p = Number(pin.dataset.p);
+      if (knocked.has(p)) knocked.delete(p); else knocked.add(p);
+      pin.classList.toggle('down', knocked.has(p));
+      pin.textContent = knocked.has(p) ? '·' : '🎳';
+      pad.querySelector('#roll-btn').textContent = `Roll ${knocked.size}`;
+      if (knocked.size === 10) setTimeout(() => confirmRoll(10), 350); // auto strike
+    });
+    pad.querySelector('#roll-btn').addEventListener('click', () => confirmRoll(knocked.size));
+    pad.querySelector('#reset-btn').addEventListener('click', () => {
+      knocked.clear();
+      drawPad();
+    });
+    function confirmRoll(n) {
+      const pos2 = frameState(frames);
+      if (!pos2) return;
+      frames[pos2[0]][pos2[1]] = n;
+      draw();
+    }
+  }
+
+  function drawNumPad(f, s) {
+    const num = pad.querySelector('#pad-num');
+    if (!num) return;
     let max = 10;
     if (f < 9 && s === 1) max = 10 - frames[f][0];
     if (f === 9) {
@@ -120,28 +197,23 @@ export function renderGameForm(el, game, onDone) {
       btns += `<button data-n="${n}">${label}</button>`;
     }
     btns += '<button data-n="-1">CLR</button>';
-    pad.innerHTML = `<div class="pad-label">Frame ${f + 1} · roll ${s + 1} (max ${max})</div><div class="pad-grid">${btns}</div>`;
+    num.innerHTML = `<div class="pad-grid">${btns}</div>`;
+    num.querySelectorAll('button[data-n]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const n = Number(b.dataset.n);
+        const pos2 = frameState(frames);
+        if (!pos2) return;
+        if (n === -1) frames[pos2[0]].pop();
+        else frames[pos2[0]][pos2[1]] = n;
+        draw();
+      })
+    );
   }
 
   function draw() {
     drawCard();
     drawPad();
   }
-
-  pad.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-n]');
-    if (!btn) return;
-    const n = Number(btn.dataset.n);
-    const pos = frameState(frames);
-    if (!pos) return;
-    const [f, s] = pos;
-    if (n === -1) {
-      frames[f].pop();
-    } else {
-      frames[f][s] = n;
-    }
-    draw();
-  });
 
   card.addEventListener('click', (e) => {
     const cell = e.target.closest('.cell');

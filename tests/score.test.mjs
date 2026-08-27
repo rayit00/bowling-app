@@ -1,6 +1,6 @@
 // tests/score.test.mjs — phase 1 test gate: node tests/score.test.mjs
 import { scoreGame, frameStats } from '../js/score.js';
-import { frameState } from '../js/game-ui.js';
+import { frameState, standingPins } from '../js/game-ui.js';
 
 let pass = 0, fail = 0;
 function eq(name, got, want) {
@@ -91,6 +91,18 @@ eq('state: 10th strike 3 rolls complete', frameState(nine([0, 0]).concat([[10, 1
 eq('state: 10th spare 3 rolls complete', frameState(nine([0, 0]).concat([[7, 3, 5]])), null);
 eq('state: mid-game open frame 1 roll', frameState([[7], ...nine([0, 0]).slice(0, 8), [0, 0]]), [0, 1]);
 eq('state: empty game starts at f1 r1', frameState(ten([])), [0, 0]);
+
+// standingPins: pins standing on the rack for the upcoming roll (pin-deck UI)
+eq('pins: fresh rack', standingPins(ten([]), 0, 0), 10);
+eq('pins: after 7 -> 3 standing', standingPins([[7], ...nine([0, 0]).slice(0, 8), [0, 0]], 0, 1), 3);
+eq('pins: after strike -> 0', standingPins([[10], ...nine([0, 0]).slice(0, 8), [0, 0]], 0, 1), 0);
+eq('pins: 10th fresh', standingPins(nine([0, 0]).concat([]), 9, 0), 10);
+eq('pins: 10th after strike -> fresh rack', standingPins(nine([0, 0]).concat([[10]]), 9, 1), 10);
+eq('pins: 10th after 7 -> 3', standingPins(nine([0, 0]).concat([[7]]), 9, 1), 3);
+eq('pins: 10th X X -> fresh rack', standingPins(nine([0, 0]).concat([[10, 10]]), 9, 2), 10);
+eq('pins: 10th X 7 -> 3', standingPins(nine([0, 0]).concat([[10, 7]]), 9, 2), 3);
+eq('pins: 10th spare -> fresh rack', standingPins(nine([0, 0]).concat([[7, 3]]), 9, 2), 10);
+eq('pins: 10th open -> 0', standingPins(nine([0, 0]).concat([[7, 2]]), 9, 2), 0);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
