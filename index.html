@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BowlTrack</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d0f12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">🎳 <span>BowlTrack</span></div>
+  <div class="data-wrap">
+    <button id="data-btn">Data ▾</button>
+    <div class="data-menu" id="data-menu">
+      <button id="export-btn">Export backup</button>
+      <button id="import-btn">Import backup</button>
+    </div>
+  </div>
+</header>
+<main id="view"></main>
+<nav>
+  <button data-view="games"><span class="ic">🎳</span>Games</button>
+  <button data-view="new"><span class="ic">＋</span>New</button>
+  <button data-view="sessions"><span class="ic">🗂</span>Sessions</button>
+  <button data-view="stats"><span class="ic">📈</span>Stats</button>
+</nav>
+<input type="file" id="import-file" accept="application/json,.json" hidden>
+<script type="module" src="js/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+  }
+</script>
+</body>
+</html>
