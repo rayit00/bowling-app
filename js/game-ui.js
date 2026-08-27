@@ -129,17 +129,17 @@ export function renderGameForm(el, game, onDone) {
     const [f, s] = pos;
     const standing = standingPins(frames, f, s);
     const knocked = new Set();
-    let pins = '';
+    const pins = [];
     for (let p = 1; p <= 10; p++) {
       const up = p <= standing;
-      pins += `<div class="pin ${up ? 'up' : 'down'}" data-p="${p}">${up ? '🎳' : '·'}</div>`;
+      pins.push(`<div class="pin ${up ? 'up' : 'down'}" data-p="${p}" ${up ? '' : 'hidden'}><span class="pin-n">${p}</span></div>`);
     }
     pad.innerHTML = `
       <div class="pad-label">Frame ${f + 1} · roll ${s + 1} — tap the pins you knock down</div>
       <div class="rack">
-        <div class="rack-row">${pins.slice(0, 4)}</div>
-        <div class="rack-row">${pins.slice(4, 8)}</div>
-        <div class="rack-row">${pins.slice(8, 10)}</div>
+        <div class="rack-row">${pins.slice(0, 4).join('')}</div>
+        <div class="rack-row">${pins.slice(4, 8).join('')}</div>
+        <div class="rack-row">${pins.slice(8, 10).join('')}</div>
       </div>
       <div class="form-row rack-actions">
         <button class="primary" id="roll-btn">Roll ${knocked.size}</button>
@@ -157,11 +157,11 @@ export function renderGameForm(el, game, onDone) {
     });
     pad.querySelector('.rack').addEventListener('click', (e) => {
       const pin = e.target.closest('.pin');
-      if (!pin) return;
+      if (!pin || pin.hidden) return;
       const p = Number(pin.dataset.p);
       if (knocked.has(p)) knocked.delete(p); else knocked.add(p);
       pin.classList.toggle('down', knocked.has(p));
-      pin.textContent = knocked.has(p) ? '·' : '🎳';
+      pin.classList.toggle('up', !knocked.has(p));
       pad.querySelector('#roll-btn').textContent = `Roll ${knocked.size}`;
       if (knocked.size === 10) setTimeout(() => confirmRoll(10), 350); // auto strike
     });

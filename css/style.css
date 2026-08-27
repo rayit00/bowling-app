@@ -150,14 +150,24 @@ button.ghost.on { color: var(--accent); border-color: var(--accent); }
   border-radius: 10px; padding: 8px 6px;
 }
 .pin {
-  width: 44px; height: 44px; border-radius: 50%;
+  position: relative;
+  width: 34px; height: 52px;
+  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; cursor: pointer; user-select: none;
-  background: var(--panel2); border: 1px solid var(--border);
-  transition: transform 0.06s ease;
+  cursor: pointer; user-select: none;
+  background: #e5e7eb; border: 1px solid #9aa3b2;
+  box-shadow: inset 0 -6px 8px rgba(0,0,0,.25);
+  transition: transform 0.06s ease, opacity 0.15s ease;
 }
-.pin.up { background: #232a35; border-color: #3a4353; }
-.pin.down { opacity: 0.35; transform: scale(0.88); }
+.pin::before {
+  content: ''; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+  width: 16px; height: 4px; border-radius: 2px; background: #dc2626;
+}
+.pin-n { font-size: 12px; font-weight: 700; color: #374151; margin-top: 14px; }
+.pin[hidden] { display: none; }
+.pin.up { background: #e5e7eb; }
+.pin.down { background: #4b5563; border-color: #4b5563; }
+.pin.down::before { background: #4b5563; }
 .pin:active { transform: scale(0.8); }
 .rack-actions { margin: 0 0 10px; }
 .rack-actions button.primary { padding: 11px 0; }
