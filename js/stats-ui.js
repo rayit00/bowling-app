@@ -9,7 +9,7 @@ function rollingAvg(sorted, n) {
   return Math.round(last.reduce((a, g) => a + (g.total || 0), 0) / last.length);
 }
 
-function renderStats(el, games) {
+export function renderStats(el, games) {
   if (games.length === 0) {
     el.innerHTML = `<div class="page"><div class="empty"><div class="empty-ic">📈</div><p>Log some games to see stats.</p></div></div>`;
     return;

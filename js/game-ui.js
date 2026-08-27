@@ -24,7 +24,7 @@ function frameState(frames) {
   return null; // complete
 }
 
-function renderGameForm(el, game, onDone) {
+export function renderGameForm(el, game, onDone) {
   const isNew = !game;
   const g = game || {
     id: Date.now(),
@@ -185,7 +185,7 @@ function rollLabel(f, fr) {
   return out;
 }
 
-function renderGameDetail(el, game, { onEdit, onDelete, onBack }) {
+export function renderGameDetail(el, game, { onEdit, onDelete, onBack }) {
   const sc = scoreGame(game.frames);
   const st = frameStats(game.frames);
   const conv = st.conversionPct !== null ? `${st.conversionPct}%` : '—';

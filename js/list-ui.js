@@ -28,7 +28,7 @@ function gameRow(g) {
     </div>`;
 }
 
-function renderGameList(el, games, onOpen) {
+export function renderGameList(el, games, onOpen) {
   if (games.length === 0) {
     emptyState(el, 'No games yet. Tap + New to log your first game.');
     return;
@@ -44,7 +44,7 @@ function renderGameList(el, games, onOpen) {
   );
 }
 
-function renderSessions(el, games, onOpen) {
+export function renderSessions(el, games, onOpen) {
   const grouped = {};
   const ungrouped = [];
   for (const g of games) {
