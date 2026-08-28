@@ -1,6 +1,6 @@
 // tests/score.test.mjs — phase 1 test gate: node tests/score.test.mjs
 import { scoreGame, frameStats } from '../js/score.js';
-import { frameState, standingPins } from '../js/game-ui.js';
+import { frameState, standingPins, rackStandingFor } from '../js/game-ui.js';
 
 let pass = 0, fail = 0;
 function eq(name, got, want) {
@@ -103,6 +103,31 @@ eq('pins: 10th X X -> fresh rack', standingPins(nine([0, 0]).concat([[10, 10]]),
 eq('pins: 10th X 7 -> 3', standingPins(nine([0, 0]).concat([[10, 7]]), 9, 2), 3);
 eq('pins: 10th spare -> fresh rack', standingPins(nine([0, 0]).concat([[7, 3]]), 9, 2), 10);
 eq('pins: 10th open -> 0', standingPins(nine([0, 0]).concat([[7, 2]]), 9, 2), 0);
+
+// rackStandingFor: which SPECIFIC pins stand for the upcoming roll (pin-deck UI)
+const R = Array.from({ length: 10 }, () => []); // empty rackState
+const FULL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+eq('rack: fresh', rackStandingFor(ten([]), R, 0, 0), FULL);
+eq('rack: legacy after 7 (no rack data)', rackStandingFor([[7], ...nine([0, 0]).slice(0, 8), [0, 0]], R, 0, 1), [1, 2, 3]);
+eq('rack: recorded taps win over generic',
+  rackStandingFor([[5], ...nine([0, 0]).slice(0, 8), [0, 0]], [[[1, 2, 3, 5, 8]]], 0, 1), [1, 2, 3, 5, 8]);
+eq('rack: stale recorded (count mismatch) -> generic fallback',
+  rackStandingFor([[7], ...nine([0, 0]).slice(0, 8), [0, 0]], [[[1, 2, 3, 5, 8]]], 0, 1), [1, 2, 3]);
+eq('rack: after strike -> empty',
+  rackStandingFor([[10], ...nine([0, 0]).slice(0, 8), [0, 0]], [[[]]], 0, 1), []);
+eq('rack: 10th fresh', rackStandingFor(nine([0, 0]).concat([]), R, 9, 0), FULL);
+eq('rack: 10th after strike -> full rack', rackStandingFor(nine([0, 0]).concat([[10]]), R, 9, 1), FULL);
+eq('rack: 10th after 7 -> 3', rackStandingFor(nine([0, 0]).concat([[7]]), R, 9, 1), [1, 2, 3]);
+eq('rack: 10th spare -> full rack (rule wins over recorded)',
+  rackStandingFor(nine([0, 0]).concat([[7, 3]]), [[[], []]], 9, 2), FULL);
+eq('rack: 10th after X 7 -> recorded 3', rackStandingFor(nine([0, 0]).concat([[10, 7]]), [[[], [1, 2, 3]]], 9, 2), [1, 2, 3]);
+eq('rack: 10th X X -> full rack (rule)', rackStandingFor(nine([0, 0]).concat([[10, 10]]), [[[], []]], 9, 2), FULL);
+eq('rack: 10th X 7 -> roll 3 sees the 3 standing pins (not a fresh rack)',
+  rackStandingFor(nine([0, 0]).concat([[10, 7]]), [[[], [1, 2, 3]]], 9, 2), [1, 2, 3]);
+eq('rack: user scenario — 4, tapped {7,8,9,10}, roll 2 shows the 6 actually left',
+  rackStandingFor([[4], ...nine([0, 0]).slice(0, 8), [0, 0]], [[[1, 2, 3, 4, 5, 6]]], 0, 1), [1, 2, 3, 4, 5, 6]);
+eq('rack: user scenario — 4, tapped {4,5,6,1}, roll 2 shows {2,3,7,8,9,10}',
+  rackStandingFor([[4], ...nine([0, 0]).slice(0, 8), [0, 0]], [[[2, 3, 7, 8, 9, 10]]], 0, 1), [2, 3, 7, 8, 9, 10]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

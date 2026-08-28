@@ -52,6 +52,26 @@ export function standingPins(frames, f, s) {
   return 0;
 }
 
+export function rackStandingFor(frames, rackState, f, s) {
+  // pure: pins standing BEFORE roll s. rackState[f] = "pins standing after each roll".
+  const FULL_RACK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  if (s === 0) return [...FULL_RACK];
+  const prev = frames[f][s - 1];
+  // 10th frame: strike or spare means a fresh rack (rule wins over recorded state)
+  if (f === 9) {
+    if (prev === 10) return [...FULL_RACK];
+    if (s === 2 && frames[f][0] + prev === 10) return [...FULL_RACK];
+  }
+  const arr = rackState[f];
+  if (arr && arr.length > s - 1) {
+    const rec = arr[s - 1];
+    // trust recorded taps only when the count still matches the roll
+    // (guards against undo + re-roll with a different count)
+    if (rec.length === 10 - prev) return [...rec];
+  }
+  return [...FULL_RACK].slice(0, 10 - prev); // legacy / stale: generic fallback
+}
+
 export function renderGameForm(el, game, onDone) {
   const isNew = !game;
   const g = game || {
@@ -66,6 +86,48 @@ export function renderGameForm(el, game, onDone) {
   let frames = g.frames.map((fr) => [...fr]);
   const meta = { date: g.date, alley: g.alley, lane: g.lane, session: g.session, notes: g.notes };
   let glyphMode = loadPref('glyphMode', true); // default: pin symbols (X / G)
+
+  // rackState[f] = array of "pins standing AFTER each roll" (pin numbers 1-10).
+  // Legacy games have no rack data: the first confirmed roll seeds a fresh rack,
+  // so roll 2+ shows the exact pins the user left up.
+  let rackState = frames.map(() => []);
+  const FULL_RACK = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  let knocked = new Set();   // pins tapped down for the in-progress roll (form scope: survives redraws)
+  let curPos = null;         // [f, s] of the roll the rack currently targets
+  const RACK_KEY = `bt_rack_${g.id}`;
+  try {
+    const stored = JSON.parse(localStorage.getItem(RACK_KEY) || 'null');
+    if (Array.isArray(stored)) for (let f = 0; f < 10; f++) rackState[f] = (stored[f] || []).map((r) => [...r]);
+  } catch { /* corrupt: start fresh */ }
+  function saveRack() {
+    try { localStorage.setItem(RACK_KEY, JSON.stringify(rackState)); } catch { /* storage full */ }
+  }
+  function rackStanding(f, s) {
+    return rackStandingFor(frames, rackState, f, s);
+  }
+  function recordRack(f, s, after) {
+    const arr = rackState[f];
+    while (arr.length < s) arr.push([...FULL_RACK]);
+    if (arr.length === s) arr.push([...after]);
+    else arr[s] = [...after]; // stale entry from undo + re-roll: overwrite
+  }
+  function confirmRoll(n, knockedSet) {
+    const pos2 = frameState(frames);
+    if (!pos2) return;
+    const [f, s] = pos2;
+    const before = rackStanding(f, s);
+    let after;
+    if (n === 10) after = []; // strike: rack empty (fresh rack handled at next roll)
+    else if (s > 0 && frames[f][s - 1] !== 10 && frames[f][s - 1] + n === 10) after = []; // spare
+    else if (f === 9 && s === 2 && frames[f][0] === 10 && frames[f][1] + n === 10) after = []; // 10th: spare after strike (X /)
+    else if (knockedSet) after = before.filter((p) => !knockedSet.has(p));
+    else after = before.slice(0, Math.max(0, before.length - n)); // numeric entry: generic
+    frames[f][s] = n;
+    recordRack(f, s, after);
+    saveRack();
+    knocked = new Set(); // the confirmed taps are now recorded — start the next roll clean
+    draw();
+  }
 
   el.innerHTML = `
     <div class="page">
@@ -124,14 +186,18 @@ export function renderGameForm(el, game, onDone) {
     const pos = frameState(frames);
     if (!pos) {
       pad.innerHTML = '<div class="pad-done">Game complete ✓ — save when ready</div>';
+      curPos = null;
       return;
     }
     const [f, s] = pos;
-    const standing = standingPins(frames, f, s);
-    const knocked = new Set();
+    const standing = rackStanding(f, s);
+    // new roll position -> start with nothing knocked; unchanged position
+    // (pin taps, pad toggles, glyph toggle) -> keep the in-progress selection
+    if (!curPos || curPos[0] !== f || curPos[1] !== s) knocked = new Set();
+    curPos = [f, s];
     const pins = [];
     for (let p = 1; p <= 10; p++) {
-      const up = p <= standing;
+      const up = standing.includes(p) && !knocked.has(p);
       pins.push(`<div class="pin ${up ? 'up' : 'down'}" data-p="${p}" ${up ? '' : 'hidden'}><span class="pin-n">${p}</span></div>`);
     }
     // standard rack triangle, front row (4 5 6 1) on top, head pin 7 at bottom
@@ -164,34 +230,30 @@ export function renderGameForm(el, game, onDone) {
       pin.classList.toggle('down', knocked.has(p));
       pin.classList.toggle('up', !knocked.has(p));
       pad.querySelector('#roll-btn').textContent = `Roll ${knocked.size}`;
-      if (knocked.size === 10) setTimeout(() => confirmRoll(10), 350); // auto strike
+      if (knocked.size === 10) {
+        const strikePos = [f, s]; // capture the roll this timeout belongs to
+        setTimeout(() => {
+          // guard 1: user reset the rack in the meantime
+          if (knocked.size !== 10) return;
+          // guard 2: game advanced (CLR / another confirm) — a stale strike
+          // must never fire on a later roll
+          const posNow = frameState(frames);
+          if (!posNow || posNow[0] !== strikePos[0] || posNow[1] !== strikePos[1]) return;
+          confirmRoll(10, new Set(knocked));
+        }, 350);
+      } // auto strike
     });
-    pad.querySelector('#roll-btn').addEventListener('click', () => confirmRoll(knocked.size));
+    pad.querySelector('#roll-btn').addEventListener('click', () => confirmRoll(knocked.size, knocked));
     pad.querySelector('#reset-btn').addEventListener('click', () => {
-      knocked.clear();
+      knocked = new Set();
       drawPad();
     });
-    function confirmRoll(n) {
-      const pos2 = frameState(frames);
-      if (!pos2) return;
-      frames[pos2[0]][pos2[1]] = n;
-      draw();
-    }
   }
 
   function drawNumPad(f, s) {
     const num = pad.querySelector('#pad-num');
     if (!num) return;
-    let max = 10;
-    if (f < 9 && s === 1) max = 10 - frames[f][0];
-    if (f === 9) {
-      if (s === 1) max = frames[9][0] === 10 ? 10 : 10 - frames[9][0];
-      if (s === 2) {
-        const a = frames[9][0], b = frames[9][1];
-        if (a === 10) max = b === 10 ? 10 : 10 - b;
-        else max = 10;
-      }
-    }
+    const max = rackStanding(f, s).length;
     let btns = '';
     for (let n = 0; n <= max; n++) {
       const label = n === 10 ? 'X' : n === 0 ? 'G' : String(n);
@@ -202,10 +264,18 @@ export function renderGameForm(el, game, onDone) {
     num.querySelectorAll('button[data-n]').forEach((b) =>
       b.addEventListener('click', () => {
         const n = Number(b.dataset.n);
-        const pos2 = frameState(frames);
-        if (!pos2) return;
-        if (n === -1) frames[pos2[0]].pop();
-        else frames[pos2[0]][pos2[1]] = n;
+        if (n === -1) {
+          const pos2 = frameState(frames);
+          if (!pos2) return;
+          frames[pos2[0]].pop();
+          // rackState[f][i] = pins after roll i (0-based). Popping roll at index
+          // (pos2[1]-1) drops its record; keep 0..pos2[1]-2.
+          rackState[pos2[0]] = rackState[pos2[0]].slice(0, Math.max(0, pos2[1] - 1));
+          saveRack();
+          knocked = new Set();
+        } else {
+          confirmRoll(n, null);
+        }
         draw();
       })
     );
@@ -241,6 +311,10 @@ export function renderGameForm(el, game, onDone) {
   el.querySelector('#f-clear').addEventListener('click', () => {
     if (confirm('Clear all rolls?')) {
       frames = emptyFrames();
+      rackState = frames.map(() => []);
+      try { localStorage.removeItem(RACK_KEY); } catch { /* ignore */ }
+      knocked = new Set();
+      curPos = null;
       draw();
     }
   });
@@ -260,6 +334,7 @@ export function renderGameForm(el, game, onDone) {
       frames,
       total: sc.total,
     };
+    saveRack();
     onDone(out, false);
   });
 
@@ -270,7 +345,7 @@ function rollLabel(f, fr) {
   // display glyphs for a roll: X strike, / spare, G gutter, or number
   if (f < 9) {
     if (fr[0] === 10) return ['X'];
-    return [fr[0] === 0 ? 'G' : String(fr[0]), fr[1] === 10 ? '/' : fr[1] === 0 ? 'G' : String(fr[1])];
+    return [fr[0] === 0 ? 'G' : String(fr[0]), fr[0] + fr[1] === 10 ? '/' : fr[1] === 0 ? 'G' : String(fr[1])];
   }
   const out = [];
   for (let i = 0; i < fr.length; i++) {
