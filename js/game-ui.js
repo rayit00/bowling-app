@@ -86,6 +86,7 @@ export function renderGameForm(el, game, onDone) {
   let frames = g.frames.map((fr) => [...fr]);
   const meta = { date: g.date, alley: g.alley, lane: g.lane, session: g.session, notes: g.notes };
   let glyphMode = loadPref('glyphMode', true); // default: pin symbols (X / G)
+  let padMode = loadPref('padMode', 'rack');   // 'rack' | 'num' — persists across rolls/games
 
   // rackState[f] = array of "pins standing AFTER each roll" (pin numbers 1-10).
   // Legacy games have no rack data: the first confirmed roll seeds a fresh rack,
@@ -210,23 +211,21 @@ export function renderGameForm(el, game, onDone) {
     const order = [6, 7, 8, 9, 1, 2, 3, 4, 5, 0];
     const rows = [order.slice(6, 10), order.slice(3, 6), order.slice(1, 3), order.slice(0, 1)];
     pad.innerHTML = `
-      <div class="pad-label">Frame ${f + 1} · roll ${s + 1} — tap the pins you knock down</div>
-      <div class="rack">
+      <div class="pad-label">Frame ${f + 1} · roll ${s + 1} — ${padMode === 'num' ? 'type the pins you knock down' : 'tap the pins you knock down'}</div>
+      <div class="rack" id="rack-wrap" ${padMode === 'num' ? 'hidden' : ''}>
         ${rows.map(r => `<div class="rack-row">${r.map(i => pins[i]).join('')}</div>`).join('')}
       </div>
-      <div class="form-row rack-actions">
+      <div class="form-row rack-actions" id="rack-actions" ${padMode === 'num' ? 'hidden' : ''}>
         <button class="primary" id="roll-btn">Roll ${knocked.size}</button>
         <button class="ghost" id="reset-btn">Reset rack</button>
       </div>
-      <button class="pad-toggle" id="pad-toggle">✏️ Type a number instead</button>
-      <div class="pad-num" id="pad-num" hidden></div>`;
+      <button class="pad-toggle" id="pad-toggle">${padMode === 'num' ? '🎳 Use the pin rack' : '✏️ Type a number instead'}</button>
+      <div class="pad-num" id="pad-num" ${padMode === 'num' ? '' : 'hidden'}></div>`;
     drawNumPad(f, s);
     pad.querySelector('#pad-toggle').addEventListener('click', () => {
-      const num = pad.querySelector('#pad-num');
-      num.hidden = !num.hidden;
-      pad.querySelector('#pad-toggle').textContent = num.hidden
-        ? '✏️ Type a number instead'
-        : '🎳 Use the pin rack';
+      padMode = padMode === 'num' ? 'rack' : 'num';
+      savePref('padMode', padMode);
+      drawPad();
     });
     pad.querySelector('.rack').addEventListener('click', (e) => {
       const pin = e.target.closest('.pin');
