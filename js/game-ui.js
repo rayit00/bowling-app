@@ -134,9 +134,9 @@ export function renderGameForm(el, game, onDone) {
       const up = p <= standing;
       pins.push(`<div class="pin ${up ? 'up' : 'down'}" data-p="${p}" ${up ? '' : 'hidden'}><span class="pin-n">${p}</span></div>`);
     }
-    // standard rack triangle, top (head pin 7) to front row (4 5 6 1)
+    // standard rack triangle, front row (4 5 6 1) on top, head pin 7 at bottom
     const order = [6, 7, 8, 9, 1, 2, 3, 4, 5, 0];
-    const rows = [order.slice(0, 1), order.slice(1, 3), order.slice(3, 6), order.slice(6, 10)];
+    const rows = [order.slice(6, 10), order.slice(3, 6), order.slice(1, 3), order.slice(0, 1)];
     pad.innerHTML = `
       <div class="pad-label">Frame ${f + 1} · roll ${s + 1} — tap the pins you knock down</div>
       <div class="rack">

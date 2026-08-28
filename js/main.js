@@ -1,5 +1,5 @@
 // js/main.js — ORCHESTRATOR ONLY: state, routing, wiring. No business logic.
-const APP_VER = 'v8'; // bump on every deploy — shown in header so you can verify freshness
+const APP_VER = 'v9'; // bump on every deploy — shown in header so you can verify freshness
 import { loadAll, saveAll } from './store.js';
 import { renderGameForm, renderGameDetail } from './game-ui.js';
 import { renderGameList, renderSessions } from './list-ui.js';
