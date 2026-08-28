@@ -179,6 +179,7 @@ export function renderGameForm(el, game, onDone) {
     html += '</div>';
     const sc = scoreGame(frames);
     html += `<div class="running">${sc.valid ? sc.frameScores.map((n) => `<b>${n}</b>`).join(' ') : ''}</div>`;
+    html += '<div class="card-hint">tap a filled frame to jump back and re-enter that roll</div>';
     card.innerHTML = html;
   }
 
@@ -235,19 +236,8 @@ export function renderGameForm(el, game, onDone) {
       pin.classList.toggle('down', knocked.has(p));
       pin.classList.toggle('up', !knocked.has(p));
       pad.querySelector('#roll-btn').textContent = `Roll ${knocked.size}`;
-      if (knocked.size === 10) {
-        const strikePos = [f, s]; // capture the roll this timeout belongs to
-        setTimeout(() => {
-          // guard 1: user reset the rack in the meantime
-          if (knocked.size !== 10) return;
-          // guard 2: game advanced (CLR / another confirm) — a stale strike
-          // must never fire on a later roll
-          const posNow = frameState(frames);
-          if (!posNow || posNow[0] !== strikePos[0] || posNow[1] !== strikePos[1]) return;
-          confirmRoll(10, new Set(knocked));
-        }, 350);
-      } // auto strike
     });
+    // No auto-confirm: a strike is only recorded when the user taps "Roll 10".
     pad.querySelector('#roll-btn').addEventListener('click', () => confirmRoll(knocked.size, knocked));
     pad.querySelector('#reset-btn').addEventListener('click', () => {
       knocked = new Set();
@@ -294,10 +284,19 @@ export function renderGameForm(el, game, onDone) {
   card.addEventListener('click', (e) => {
     const cell = e.target.closest('.cell');
     if (!cell) return;
-    const pos = frameState(frames);
-    if (!pos) return;
-    const [f, s] = pos;
-    if (Number(cell.dataset.f) === f && Number(cell.dataset.s) === s) drawPad();
+    const f = Number(cell.dataset.f), s = Number(cell.dataset.s);
+    if (frames[f][s] === undefined) return; // empty cell: nothing to return to
+    // Jump back: rewind to this roll — it and every roll after it are dropped,
+    // so the user can re-enter it (and the rack state follows).
+    if (!confirm(`Return to frame ${f + 1}, roll ${s + 1}? Rolls after that will be cleared.`)) return;
+    frames[f] = frames[f].slice(0, s);
+    for (let k = f + 1; k < 10; k++) frames[k] = [];
+    rackState[f] = rackState[f].slice(0, s);
+    for (let k = f + 1; k < 10; k++) rackState[k] = [];
+    saveRack();
+    knocked = new Set();
+    curPos = null;
+    draw();
   });
 
   el.querySelector('[data-act="back"]').addEventListener('click', () => onDone(null, true));

@@ -171,6 +171,7 @@ button.ghost.on { color: var(--accent); border-color: var(--accent); }
 /* pin already knocked down in a previous roll: stays in its rack spot, dimmed */
 .pin.dead { opacity: 0.28; filter: grayscale(1); pointer-events: none; }
 .pin:active { transform: scale(0.8); }
+.card-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 6px; }
 .rack-actions { margin: 0 0 10px; }
 .rack-actions button.primary { padding: 11px 0; }
 .rack-actions button.ghost { flex: 0 0 auto; padding: 0 16px; height: auto; }
