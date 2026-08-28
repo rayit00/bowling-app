@@ -144,6 +144,7 @@ button.ghost.on { color: var(--accent); border-color: var(--accent); }
 
 /* pin rack */
 .rack { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+[hidden] { display: none !important; }
 .rack-row {
   display: flex; justify-content: center; gap: 8px;
   background: var(--panel); border: 1px solid var(--border);
