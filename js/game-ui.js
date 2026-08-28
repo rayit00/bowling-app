@@ -288,7 +288,7 @@ export function renderGameForm(el, game, onDone) {
     if (frames[f][s] === undefined) return; // empty cell: nothing to return to
     // Jump back: rewind to this roll — it and every roll after it are dropped,
     // so the user can re-enter it (and the rack state follows).
-    if (!confirm(`Return to frame ${f + 1}, roll ${s + 1}? Rolls after that will be cleared.`)) return;
+    if (!confirm(`Return to frame ${f + 1}, roll ${s + 1}? That roll and everything after it will be cleared.`)) return;
     frames[f] = frames[f].slice(0, s);
     for (let k = f + 1; k < 10; k++) frames[k] = [];
     rackState[f] = rackState[f].slice(0, s);
