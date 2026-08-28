@@ -1,6 +1,6 @@
 // sw.js — BowlTrack service worker: precache app shell, network-first with
 // cache fallback (offline at the alley still works; online always gets fresh code).
-const CACHE = 'bowltrack-v10';
+const CACHE = 'bowltrack-v11';
 const ASSETS = [
   'index.html',
   'manifest.json',

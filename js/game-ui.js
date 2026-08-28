@@ -197,8 +197,13 @@ export function renderGameForm(el, game, onDone) {
     curPos = [f, s];
     const pins = [];
     for (let p = 1; p <= 10; p++) {
-      const up = standing.includes(p) && !knocked.has(p);
-      pins.push(`<div class="pin ${up ? 'up' : 'down'}" data-p="${p}" ${up ? '' : 'hidden'}><span class="pin-n">${p}</span></div>`);
+      const standingNow = standing.includes(p);
+      const up = standingNow && !knocked.has(p);
+      // Always render all 10 pins in fixed rack positions — pins already
+      // knocked down stay on the rack, dimmed and untappable, so the rack
+      // never shifts between rolls.
+      const cls = up ? 'up' : standingNow ? 'down' : 'dead';
+      pins.push(`<div class="pin ${cls}" data-p="${p}"><span class="pin-n">${p}</span></div>`);
     }
     // standard rack triangle, front row (4 5 6 1) on top, head pin 7 at bottom
     const order = [6, 7, 8, 9, 1, 2, 3, 4, 5, 0];
@@ -224,7 +229,7 @@ export function renderGameForm(el, game, onDone) {
     });
     pad.querySelector('.rack').addEventListener('click', (e) => {
       const pin = e.target.closest('.pin');
-      if (!pin || pin.hidden) return;
+      if (!pin || !pin.classList.contains('up')) return; // only standing pins are tappable
       const p = Number(pin.dataset.p);
       if (knocked.has(p)) knocked.delete(p); else knocked.add(p);
       pin.classList.toggle('down', knocked.has(p));

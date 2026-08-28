@@ -168,6 +168,8 @@ button.ghost.on { color: var(--accent); border-color: var(--accent); }
 .pin.up { background: #e5e7eb; }
 .pin.down { background: #4b5563; border-color: #4b5563; }
 .pin.down::before { background: #4b5563; }
+/* pin already knocked down in a previous roll: stays in its rack spot, dimmed */
+.pin.dead { opacity: 0.28; filter: grayscale(1); pointer-events: none; }
 .pin:active { transform: scale(0.8); }
 .rack-actions { margin: 0 0 10px; }
 .rack-actions button.primary { padding: 11px 0; }
