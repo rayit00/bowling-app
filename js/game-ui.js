@@ -72,6 +72,19 @@ export function rackStandingFor(frames, rackState, f, s) {
   return [...FULL_RACK].slice(0, 10 - prev); // legacy / stale: generic fallback
 }
 
+// Rack layout: rows of indices into the pins[] array (pin n lives at pins[n-1]).
+// Viewed from the bowler: back row 7 8 9 10 on top, head pin 1 at the bottom.
+export const RACK_ROWS = [
+  [6, 7, 8, 9], // pins 7 8 9 10
+  [3, 4, 5],    // pins 4 5 6
+  [1, 2],       // pins 2 3
+  [0],          // pin 1 (head pin)
+];
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export function renderGameForm(el, game, onDone) {
   const isNew = !game;
   const g = game || {
@@ -138,19 +151,20 @@ export function renderGameForm(el, game, onDone) {
         <button class="ghost" id="f-glyph" title="Toggle pin symbols / numbers">🎳 X / G</button>
       </div>
       <div class="meta-grid">
-        <label>Date<input type="date" id="f-date" value="${meta.date}"></label>
-        <label>Session<input type="text" id="f-session" placeholder="e.g. Sat Night 3-up" value="${meta.session}"></label>
-        <label>Alley<input type="text" id="f-alley" placeholder="e.g. Lanes on 9" value="${meta.alley}"></label>
-        <label>Lane<input type="text" id="f-lane" placeholder="e.g. 12" value="${meta.lane}"></label>
+        <label>Date<input type="date" id="f-date" value="${esc(meta.date)}"></label>
+        <label>Session<input type="text" id="f-session" placeholder="e.g. Sat Night 3-up" value="${esc(meta.session)}"></label>
+        <label>Alley<input type="text" id="f-alley" placeholder="e.g. Lanes on 9" value="${esc(meta.alley)}"></label>
+        <label>Lane<input type="text" id="f-lane" placeholder="e.g. 12" value="${esc(meta.lane)}"></label>
       </div>
       <div class="scorecard" id="f-card"></div>
       <div class="pad" id="f-pad"></div>
       <div class="form-row">
         <button class="primary" id="f-save">Save Game</button>
+        <button class="ghost" id="f-undo">Undo</button>
         <button class="danger" id="f-clear">Clear All</button>
       </div>
       <div class="err" id="f-err"></div>
-      <textarea id="f-notes" placeholder="Notes — lane oil, ball, how it felt..." rows="3">${meta.notes}</textarea>
+      <textarea id="f-notes" placeholder="Notes — lane oil, ball, how it felt..." rows="3">${esc(meta.notes)}</textarea>
     </div>`;
 
   const card = el.querySelector('#f-card');
@@ -197,6 +211,19 @@ export function renderGameForm(el, game, onDone) {
     // (pin taps, pad toggles, glyph toggle) -> keep the in-progress selection
     if (!curPos || curPos[0] !== f || curPos[1] !== s) knocked = new Set();
     curPos = [f, s];
+    // split callout: head pin down AND (a gap between the leftmost and
+    // rightmost standing pins, or a named two-pin split like the 2-3 "sisters")
+    const TWO_PIN = [[2, 3], [2, 7], [3, 7], [4, 6], [4, 10], [5, 9], [6, 7], [6, 10]];
+    const isSplit = (() => {
+      if (s < 1 || standing.includes(1) || standing.length < 2) return false;
+      if (standing.length === 2 && TWO_PIN.some((sp) => sp.every((p) => standing.includes(p)))) return true;
+      const lo = Math.min(...standing), hi = Math.max(...standing);
+      for (let p = lo + 1; p < hi; p++) if (!standing.includes(p)) return true;
+      return false;
+    })();
+    const labelText = `Frame ${f + 1} · roll ${s + 1}${isSplit ? ' — SPLIT!' : ''} — ${padMode === 'num' ? 'type the pins you knock down' : 'tap the pins you knock down'}`;
+    // standard rack triangle, viewed from the bowler:
+    // back row 7 8 9 10 on top, head pin 1 at the bottom (front of the lane)
     const pins = [];
     for (let p = 1; p <= 10; p++) {
       const standingNow = standing.includes(p);
@@ -207,13 +234,10 @@ export function renderGameForm(el, game, onDone) {
       const cls = up ? 'up' : standingNow ? 'down' : 'dead';
       pins.push(`<div class="pin ${cls}" data-p="${p}"><span class="pin-n">${p}</span></div>`);
     }
-    // standard rack triangle, front row (4 5 6 1) on top, head pin 7 at bottom
-    const order = [6, 7, 8, 9, 1, 2, 3, 4, 5, 0];
-    const rows = [order.slice(6, 10), order.slice(3, 6), order.slice(1, 3), order.slice(0, 1)];
     pad.innerHTML = `
-      <div class="pad-label">Frame ${f + 1} · roll ${s + 1} — ${padMode === 'num' ? 'type the pins you knock down' : 'tap the pins you knock down'}</div>
+      <div class="pad-label">${esc(labelText)}</div>
       <div class="rack" id="rack-wrap" ${padMode === 'num' ? 'hidden' : ''}>
-        ${rows.map(r => `<div class="rack-row">${r.map(i => pins[i]).join('')}</div>`).join('')}
+        ${RACK_ROWS.map(r => `<div class="rack-row">${r.map(i => pins[i]).join('')}</div>`).join('')}
       </div>
       <div class="form-row rack-actions" id="rack-actions" ${padMode === 'num' ? 'hidden' : ''}>
         <button class="primary" id="roll-btn">Roll ${knocked.size}</button>
@@ -311,6 +335,21 @@ export function renderGameForm(el, game, onDone) {
     b.classList.toggle('on', glyphMode);
   }
   syncGlyphBtn();
+  el.querySelector('#f-undo').addEventListener('click', () => {
+    // find the last entered roll and drop it
+    let last = null;
+    for (let f = 9; f >= 0; f--) {
+      if (frames[f].length > 0) { last = [f, frames[f].length - 1]; break; }
+    }
+    if (!last) return; // nothing to undo
+    const [f, s] = last;
+    frames[f].pop();
+    rackState[f] = rackState[f].slice(0, Math.max(0, s));
+    saveRack();
+    knocked = new Set();
+    curPos = null;
+    draw();
+  });
   el.querySelector('#f-clear').addEventListener('click', () => {
     if (confirm('Clear all rolls?')) {
       frames = emptyFrames();
@@ -378,9 +417,9 @@ export function renderGameDetail(el, game, { onEdit, onDelete, onBack }) {
 
   const metaBits = [
     game.date,
-    game.alley ? game.alley : null,
-    game.lane ? `Lane ${game.lane}` : null,
-    game.session ? `🗂 ${game.session}` : null,
+    game.alley ? esc(game.alley) : null,
+    game.lane ? `Lane ${esc(game.lane)}` : null,
+    game.session ? `🗂 ${esc(game.session)}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -406,7 +445,7 @@ export function renderGameDetail(el, game, { onEdit, onDelete, onBack }) {
       </div>
       <div class="notes-block">
         <h3>Notes</h3>
-        <p>${game.notes ? game.notes.replace(/</g, '&lt;') : '<i>no notes</i>'}</p>
+        <p>${game.notes ? esc(game.notes) : '<i>no notes</i>'}</p>
       </div>
       <div class="form-row">
         <button class="primary" data-act="edit">Edit</button>

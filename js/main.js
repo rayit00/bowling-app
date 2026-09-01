@@ -1,5 +1,5 @@
 // js/main.js — ORCHESTRATOR ONLY: state, routing, wiring. No business logic.
-const APP_VER = 'v14'; // bump on every deploy — shown in header so you can verify freshness
+const APP_VER = 'v15'; // bump on every deploy — shown in header so you can verify freshness
 import { loadAll, saveAll } from './store.js';
 import { renderGameForm, renderGameDetail } from './game-ui.js';
 import { renderGameList, renderSessions } from './list-ui.js';
@@ -52,9 +52,13 @@ function render() {
       onBack: () => navigate('games'),
     });
   } else if (route.name === 'sessions') {
-    renderSessions(view, games, (session) => navigate('session', session));
+    renderSessions(view, games, (session, ungrouped) =>
+      navigate(ungrouped ? 'ungrouped' : 'session', session));
   } else if (route.name === 'session') {
-    const inSession = games.filter((g) => (route.id ? g.session === route.id : !g.session));
+    const inSession = games.filter((g) => g.session === route.id);
+    renderGameList(view, inSession, (id) => navigate('detail', id));
+  } else if (route.name === 'ungrouped') {
+    const inSession = games.filter((g) => !g.session);
     renderGameList(view, inSession, (id) => navigate('detail', id));
   } else if (route.name === 'stats') {
     renderStats(view, games);

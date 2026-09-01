@@ -52,6 +52,7 @@ game = {
 
 ## Versioning
 - v1.0 — initial release (all 4 phases)
+- v15 — rack fixed to standard layout (7-8-9-10 back, head pin 1 front); split callout on pad label; Undo button; HTML-escaping everywhere (XSS-safe); sessions sorted by recency; "No session" row now navigates; manifest `id` added; SW cache bowltrack-v15
 
 ## Test Gates
 - Phase 1: `node tests/score.test.mjs` (perfect game 300, all spares 150, gutters 0, 10th-frame cases, validation errors)

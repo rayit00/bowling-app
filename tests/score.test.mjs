@@ -1,6 +1,6 @@
 // tests/score.test.mjs — phase 1 test gate: node tests/score.test.mjs
 import { scoreGame, frameStats } from '../js/score.js';
-import { frameState, standingPins, rackStandingFor } from '../js/game-ui.js';
+import { frameState, standingPins, rackStandingFor, RACK_ROWS } from '../js/game-ui.js';
 
 let pass = 0, fail = 0;
 function eq(name, got, want) {
@@ -128,6 +128,10 @@ eq('rack: user scenario — 4, tapped {7,8,9,10}, roll 2 shows the 6 actually le
   rackStandingFor([[4], ...nine([0, 0]).slice(0, 8), [0, 0]], [[[1, 2, 3, 4, 5, 6]]], 0, 1), [1, 2, 3, 4, 5, 6]);
 eq('rack: user scenario — 4, tapped {4,5,6,1}, roll 2 shows {2,3,7,8,9,10}',
   rackStandingFor([[4], ...nine([0, 0]).slice(0, 8), [0, 0]], [[[2, 3, 7, 8, 9, 10]]], 0, 1), [2, 3, 7, 8, 9, 10]);
+
+// rack layout: standard triangle, back row (7 8 9 10) first, head pin 1 last
+// (regression — v14 rendered 4 5 6 1 / 10 2 3 / 8 9 / 7)
+eq('rack rows layout', RACK_ROWS, [[6, 7, 8, 9], [3, 4, 5], [1, 2], [0]]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

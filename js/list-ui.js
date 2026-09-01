@@ -13,17 +13,21 @@ function emptyState(el, msg) {
     </div>`;
 }
 
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function gameRow(g) {
   const bits = [g.date];
-  if (g.alley) bits.push(g.alley);
-  if (g.lane) bits.push(`Lane ${g.lane}`);
-  if (g.session) bits.push(`🗂 ${g.session}`);
+  if (g.alley) bits.push(esc(g.alley));
+  if (g.lane) bits.push(`Lane ${esc(g.lane)}`);
+  if (g.session) bits.push(`🗂 ${esc(g.session)}`);
   return `
     <div class="row" data-id="${g.id}">
       <div class="row-score">${g.total ?? '—'}</div>
       <div class="row-main">
         <div class="row-title">${bits.slice(0, 2).join(' · ')}</div>
-        <div class="row-sub">${bits.slice(2).join(' · ') || (g.notes ? '📝 ' + g.notes.slice(0, 40) : '')}</div>
+        <div class="row-sub">${bits.slice(2).join(' · ') || (g.notes ? '📝 ' + esc(g.notes.slice(0, 40)) : '')}</div>
       </div>
     </div>`;
 }
@@ -51,7 +55,11 @@ export function renderSessions(el, games, onOpen) {
     if (g.session) (grouped[g.session] ||= []).push(g);
     else ungrouped.push(g);
   }
-  const names = Object.keys(grouped).sort();
+  const names = Object.keys(grouped).sort((a, b) => {
+    const la = grouped[a].map((g) => g.date).sort().pop();
+    const lb = grouped[b].map((g) => g.date).sort().pop();
+    return lb > la ? 1 : lb < la ? -1 : a < b ? -1 : 1;
+  });
   if (names.length === 0 && ungrouped.length === 0) {
     emptyState(el, 'No games yet. Sessions appear when you tag games with a session name.');
     return;
@@ -84,6 +92,6 @@ export function renderSessions(el, games, onOpen) {
   html += '</div>';
   el.innerHTML = html;
   el.querySelectorAll('.row').forEach((r) =>
-    r.addEventListener('click', () => onOpen(r.dataset.session))
+    r.addEventListener('click', () => onOpen(r.dataset.session, r.dataset.session === ''))
   );
 }

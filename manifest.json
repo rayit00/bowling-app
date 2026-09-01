@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "BowlTrack — Bowling Stats",
   "short_name": "BowlTrack",
   "description": "Log bowling games, track stats and notes, link games into sessions.",
