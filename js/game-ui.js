@@ -85,13 +85,12 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-export function renderGameForm(el, game, onDone, knownPlayers = []) {
+export function renderGameForm(el, game, onDone) {
   const isNew = !game;
-  const lastPlayer = loadPref('lastPlayer', '');
   const g = game || {
     id: Date.now(),
     date: new Date().toISOString().slice(0, 10),
-    player: lastPlayer,
+    player: '',
     alley: '',
     lane: '',
     session: '',
@@ -153,8 +152,7 @@ export function renderGameForm(el, game, onDone, knownPlayers = []) {
         <button class="ghost" id="f-glyph" title="Toggle pin symbols / numbers">🎳 X / G</button>
       </div>
       <div class="meta-grid">
-        <label class="wide">Player<input type="text" id="f-player" list="player-list" placeholder="Who's bowling?" value="${esc(meta.player)}"></label>
-        <datalist id="player-list">${knownPlayers.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>
+        <label class="wide">Player<input type="text" id="f-player" placeholder="Who's bowling? (optional)" value="${esc(meta.player)}" autocomplete="off"></label>
         <label>Date<input type="date" id="f-date" value="${esc(meta.date)}"></label>
         <label>Session<input type="text" id="f-session" placeholder="e.g. Sat Night 3-up" value="${esc(meta.session)}"></label>
         <label>Alley<input type="text" id="f-alley" placeholder="e.g. Lanes on 9" value="${esc(meta.alley)}"></label>
@@ -381,7 +379,6 @@ export function renderGameForm(el, game, onDone, knownPlayers = []) {
       frames,
       total: sc.total,
     };
-    savePref('lastPlayer', out.player);
     saveRack();
     onDone(out, false);
   });

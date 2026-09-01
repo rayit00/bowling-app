@@ -32,7 +32,6 @@ function render() {
     });
   } else if (route.name === 'new' || route.name === 'edit') {
     const game = route.name === 'edit' ? games.find((g) => g.id === route.id) : null;
-    const players = [...new Set(games.map((g) => g.player).filter(Boolean))].sort();
     renderGameForm(view, game, (saved, cancelled) => {
       if (cancelled) return navigate(route.name === 'edit' ? 'detail' : 'games', route.id ?? undefined);
       if (route.name === 'edit') {
@@ -42,7 +41,7 @@ function render() {
       }
       persist();
       navigate('detail', saved.id);
-    }, players);
+    });
   } else if (route.name === 'detail') {
     const game = games.find((g) => g.id === route.id);
     if (!game) return navigate('games');
