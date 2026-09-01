@@ -85,11 +85,13 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-export function renderGameForm(el, game, onDone) {
+export function renderGameForm(el, game, onDone, knownPlayers = []) {
   const isNew = !game;
+  const lastPlayer = loadPref('lastPlayer', '');
   const g = game || {
     id: Date.now(),
     date: new Date().toISOString().slice(0, 10),
+    player: lastPlayer,
     alley: '',
     lane: '',
     session: '',
@@ -97,7 +99,7 @@ export function renderGameForm(el, game, onDone) {
     frames: emptyFrames(),
   };
   let frames = g.frames.map((fr) => [...fr]);
-  const meta = { date: g.date, alley: g.alley, lane: g.lane, session: g.session, notes: g.notes };
+  const meta = { date: g.date, player: g.player || '', alley: g.alley, lane: g.lane, session: g.session, notes: g.notes };
   let glyphMode = loadPref('glyphMode', true); // default: pin symbols (X / G)
   let padMode = loadPref('padMode', 'rack');   // 'rack' | 'num' — persists across rolls/games
 
@@ -151,6 +153,8 @@ export function renderGameForm(el, game, onDone) {
         <button class="ghost" id="f-glyph" title="Toggle pin symbols / numbers">🎳 X / G</button>
       </div>
       <div class="meta-grid">
+        <label class="wide">Player<input type="text" id="f-player" list="player-list" placeholder="Who's bowling?" value="${esc(meta.player)}"></label>
+        <datalist id="player-list">${knownPlayers.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>
         <label>Date<input type="date" id="f-date" value="${esc(meta.date)}"></label>
         <label>Session<input type="text" id="f-session" placeholder="e.g. Sat Night 3-up" value="${esc(meta.session)}"></label>
         <label>Alley<input type="text" id="f-alley" placeholder="e.g. Lanes on 9" value="${esc(meta.alley)}"></label>
@@ -369,6 +373,7 @@ export function renderGameForm(el, game, onDone) {
     const out = {
       id: g.id,
       date: el.querySelector('#f-date').value || new Date().toISOString().slice(0, 10),
+      player: el.querySelector('#f-player').value.trim(),
       session: el.querySelector('#f-session').value.trim(),
       alley: el.querySelector('#f-alley').value.trim(),
       lane: el.querySelector('#f-lane').value.trim(),
@@ -376,6 +381,7 @@ export function renderGameForm(el, game, onDone) {
       frames,
       total: sc.total,
     };
+    savePref('lastPlayer', out.player);
     saveRack();
     onDone(out, false);
   });
@@ -433,6 +439,7 @@ export function renderGameDetail(el, game, { onEdit, onDelete, onBack }) {
       </div>
       <div class="score-hero">
         <div class="score-big">${sc.valid ? sc.total : '—'}</div>
+        ${game.player ? `<div class="score-player">🎳 ${esc(game.player)}</div>` : ''}
         <div class="meta-line">${metaBits}</div>
       </div>
       ${framesHtml}

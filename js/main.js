@@ -1,5 +1,5 @@
 // js/main.js — ORCHESTRATOR ONLY: state, routing, wiring. No business logic.
-const APP_VER = 'v15'; // bump on every deploy — shown in header so you can verify freshness
+const APP_VER = 'v16'; // bump on every deploy — shown in header so you can verify freshness
 import { loadAll, saveAll } from './store.js';
 import { renderGameForm, renderGameDetail } from './game-ui.js';
 import { renderGameList, renderSessions } from './list-ui.js';
@@ -16,8 +16,8 @@ function persist() {
   saveAll(games);
 }
 
-function navigate(name, id) {
-  route = { name, id };
+function navigate(name, id, extra) {
+  route = { name, id, extra };
   document.querySelectorAll('nav button').forEach((b) =>
     b.classList.toggle('active', b.dataset.view === name)
   );
@@ -26,9 +26,13 @@ function navigate(name, id) {
 
 function render() {
   if (route.name === 'games') {
-    renderGameList(view, games, (id) => navigate('detail', id));
+    renderGameList(view, games, (id) => navigate('detail', id), {
+      player: route.extra?.player ?? null,
+      onPickPlayer: (p) => navigate('games', undefined, { player: p }),
+    });
   } else if (route.name === 'new' || route.name === 'edit') {
     const game = route.name === 'edit' ? games.find((g) => g.id === route.id) : null;
+    const players = [...new Set(games.map((g) => g.player).filter(Boolean))].sort();
     renderGameForm(view, game, (saved, cancelled) => {
       if (cancelled) return navigate(route.name === 'edit' ? 'detail' : 'games', route.id ?? undefined);
       if (route.name === 'edit') {
@@ -38,7 +42,7 @@ function render() {
       }
       persist();
       navigate('detail', saved.id);
-    });
+    }, players);
   } else if (route.name === 'detail') {
     const game = games.find((g) => g.id === route.id);
     if (!game) return navigate('games');
@@ -56,12 +60,18 @@ function render() {
       navigate(ungrouped ? 'ungrouped' : 'session', session));
   } else if (route.name === 'session') {
     const inSession = games.filter((g) => g.session === route.id);
-    renderGameList(view, inSession, (id) => navigate('detail', id));
+    renderGameList(view, inSession, (id) => navigate('detail', id), {
+      title: `🗂 ${route.id}`,
+      onPickPlayer: (p) => navigate('games', undefined, { player: p }),
+    });
   } else if (route.name === 'ungrouped') {
     const inSession = games.filter((g) => !g.session);
-    renderGameList(view, inSession, (id) => navigate('detail', id));
+    renderGameList(view, inSession, (id) => navigate('detail', id), {
+      title: 'No session',
+      onPickPlayer: (p) => navigate('games', undefined, { player: p }),
+    });
   } else if (route.name === 'stats') {
-    renderStats(view, games);
+    renderStats(view, games, (player) => navigate('games', undefined, { player }), route.extra?.player ?? null);
   }
 }
 

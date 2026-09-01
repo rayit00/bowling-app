@@ -26,6 +26,7 @@ export function importJSON(file, cb) {
         .map((g) => ({
           id: Number(g.id) || Date.now(),
           date: String(g.date || ''),
+          player: String(g.player || ''),
           alley: String(g.alley || ''),
           lane: String(g.lane || ''),
           session: String(g.session || ''),

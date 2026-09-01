@@ -108,10 +108,20 @@ button.ghost.on { color: var(--accent); border-color: var(--accent); }
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
 }
 .meta-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.meta-grid label.wide { grid-column: 1 / -1; }
 .meta-grid input {
   background: var(--panel); border: 1px solid var(--border); color: var(--text);
   border-radius: 8px; padding: 9px 10px; font-size: 14px; width: 100%;
 }
+
+/* player filter chips */
+.player-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip-btn {
+  background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 999px; padding: 6px 13px; font-size: 13px; cursor: pointer;
+}
+.chip-btn:active { background: var(--panel2); }
+.chip-btn.on { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 700; }
 
 /* scorecard entry */
 .frames {
@@ -209,6 +219,7 @@ textarea {
 /* detail */
 .score-hero { text-align: center; padding: 18px 0; }
 .score-big { font-size: 64px; font-weight: 800; color: var(--accent); line-height: 1; }
+.score-player { font-size: 17px; font-weight: 600; margin-top: 8px; }
 .meta-line { color: var(--muted); font-size: 13.5px; margin-top: 8px; }
 
 .frames.detail { grid-template-columns: repeat(5, 1fr); margin-bottom: 8px; }
@@ -245,6 +256,9 @@ canvas#trend { width: 100%; height: auto; background: var(--panel); border: 1px 
 .tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .tbl th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 .tbl td { padding: 8px; border-bottom: 1px solid var(--border); }
+.tbl tbody tr[data-p] { cursor: pointer; }
+.tbl tbody tr[data-p]:active { background: var(--panel2); }
+.tbl tbody tr.me td { color: var(--accent); font-weight: 600; }
 
 @media (min-width: 600px) {
   .frames { gap: 6px; }

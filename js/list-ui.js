@@ -17,32 +17,62 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// Filter chips: "All" + one per known player. `active` = selected player or null.
+export function playerChips(games, active) {
+  const names = [...new Set(games.map((g) => g.player).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  if (names.length === 0) return '';
+  const chip = (label, val) =>
+    `<button class="chip-btn ${active === val ? 'on' : ''}" data-p="${esc(val ?? '')}">${esc(label)}</button>`;
+  return `<div class="player-chips">${chip('All', null)}${names.map((n) => chip(n, n)).join('')}</div>`;
+}
+
+export function wireChips(el, onPickPlayer) {
+  el.querySelectorAll('.player-chips .chip-btn').forEach((b) =>
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onPickPlayer(b.dataset.p || null);
+    })
+  );
+}
+
 function gameRow(g) {
-  const bits = [g.date];
-  if (g.alley) bits.push(esc(g.alley));
-  if (g.lane) bits.push(`Lane ${esc(g.lane)}`);
-  if (g.session) bits.push(`🗂 ${esc(g.session)}`);
+  const title = [g.date, g.player && esc(g.player), g.alley && esc(g.alley)]
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(' · ');
+  const sub = [
+    g.player && g.alley ? esc(g.alley) : null,
+    g.lane && `Lane ${esc(g.lane)}`,
+    g.session && `🗂 ${esc(g.session)}`,
+    g.notes && '📝 ' + esc(g.notes.slice(0, 40)),
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return `
     <div class="row" data-id="${g.id}">
       <div class="row-score">${g.total ?? '—'}</div>
       <div class="row-main">
-        <div class="row-title">${bits.slice(0, 2).join(' · ')}</div>
-        <div class="row-sub">${bits.slice(2).join(' · ') || (g.notes ? '📝 ' + esc(g.notes.slice(0, 40)) : '')}</div>
+        <div class="row-title">${title}</div>
+        <div class="row-sub">${sub}</div>
       </div>
     </div>`;
 }
 
-export function renderGameList(el, games, onOpen) {
-  if (games.length === 0) {
-    emptyState(el, 'No games yet. Tap + New to log your first game.');
+export function renderGameList(el, games, onOpen, opts = {}) {
+  const { player = null, onPickPlayer, title = 'Games' } = opts;
+  const shown = player ? games.filter((g) => g.player === player) : games;
+  if (shown.length === 0) {
+    emptyState(el, player ? `No games for ${esc(player)}.` : 'No games yet. Tap + New to log your first game.');
     return;
   }
-  const sorted = [...games].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id));
+  const sorted = [...shown].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id));
   el.innerHTML = `
     <div class="page">
-      <div class="page-head"><h2>Games</h2><span class="spacer"></span><span class="count">${games.length}</span></div>
+      ${playerChips(games, player)}
+      <div class="page-head"><h2>${esc(title)}</h2><span class="spacer"></span><span class="count">${shown.length}</span></div>
       <div class="list">${sorted.map(gameRow).join('')}</div>
     </div>`;
+  wireChips(el, onPickPlayer);
   el.querySelectorAll('.row').forEach((r) =>
     r.addEventListener('click', () => onOpen(Number(r.dataset.id)))
   );

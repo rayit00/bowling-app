@@ -1,20 +1,27 @@
 // js/stats-ui.js
 // contract:
-//   renderStats(el, games)   — dashboard + trend chart + by-alley table
+//   renderStats(el, games, onPickPlayer, activePlayer) — dashboard + head-to-head + trend + by-alley
 //   drawTrend(canvas, games) — simple line chart of game totals (newest right)
 import { frameStats } from './score.js';
+import { playerChips, wireChips } from './list-ui.js';
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 function rollingAvg(sorted, n) {
   const last = sorted.slice(-n);
   return Math.round(last.reduce((a, g) => a + (g.total || 0), 0) / last.length);
 }
 
-export function renderStats(el, games) {
-  if (games.length === 0) {
-    el.innerHTML = `<div class="page"><div class="empty"><div class="empty-ic">📈</div><p>Log some games to see stats.</p></div></div>`;
+export function renderStats(el, games, onPickPlayer, activePlayer = null) {
+  const pool = activePlayer ? games.filter((g) => g.player === activePlayer) : games;
+  if (pool.length === 0) {
+    el.innerHTML = `<div class="page">${playerChips(games, activePlayer)}<div class="empty"><div class="empty-ic">📈</div><p>${activePlayer ? `No games for ${esc(activePlayer)}.` : 'Log some games to see stats.'}</p></div></div>`;
+    wireChips(el, onPickPlayer);
     return;
   }
-  const sorted = [...games].sort((a, b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : a.id - b.id));
+  const sorted = [...pool].sort((a, b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : a.id - b.id));
   const totals = sorted.map((g) => g.total || 0);
   const best = Math.max(...totals);
   const agg = { strikes: 0, spares: 0, splits: 0, open: 0, attempts: 0, conv: 0 };
@@ -29,6 +36,21 @@ export function renderStats(el, games) {
   }
   const convPct = agg.attempts ? Math.round((100 * agg.conv) / agg.attempts) : '—';
 
+  // head-to-head: one row per player across ALL games (so the comparison
+  // stays visible even when a single player is selected)
+  const byPlayer = {};
+  for (const g of games) {
+    const k = g.player || '(no name)';
+    (byPlayer[k] ||= []).push(g);
+  }
+  const playerRows = Object.entries(byPlayer)
+    .map(([k, gs]) => {
+      const sortedGs = [...gs].sort((a, b) => (a.date > b.date ? 1 : -1));
+      const strikes = gs.reduce((a, g) => a + (frameStats(g.frames).strikes || 0), 0);
+      return [k, gs.length, Math.round(gs.reduce((a, g) => a + (g.total || 0), 0) / gs.length), Math.max(...gs.map((g) => g.total || 0)), strikes, sortedGs[sortedGs.length - 1].date];
+    })
+    .sort((a, b) => b[2] - a[2]);
+
   // by alley
   const byAlley = {};
   for (const g of sorted) {
@@ -41,7 +63,8 @@ export function renderStats(el, games) {
 
   el.innerHTML = `
     <div class="page">
-      <div class="page-head"><h2>Stats</h2><span class="spacer"></span><span class="count">${games.length} games</span></div>
+      ${playerChips(games, activePlayer)}
+      <div class="page-head"><h2>${activePlayer ? `Stats — ${esc(activePlayer)}` : 'Stats'}</h2><span class="spacer"></span><span class="count">${pool.length} games</span></div>
       <div class="stat-grid">
         <div class="stat-card"><b>${rollingAvg(sorted, 5)}</b><span>avg (last 5)</span></div>
         <div class="stat-card"><b>${rollingAvg(sorted, 10)}</b><span>avg (last 10)</span></div>
@@ -54,16 +77,27 @@ export function renderStats(el, games) {
         <div class="chip"><b>${agg.splits}</b><span>splits</span></div>
         <div class="chip"><b>${convPct}</b><span>spare conv</span></div>
       </div>
+      <h3>Head to Head</h3>
+      <table class="tbl">
+        <thead><tr><th>Player</th><th>Games</th><th>Avg</th><th>Best</th><th>Strikes</th><th>Last</th></tr></thead>
+        <tbody>${playerRows.map(([k, n, avg, b, st, last]) =>
+          `<tr data-p="${esc(k === '(no name)' ? '' : k)}" class="${k === activePlayer ? 'me' : ''}"><td>${esc(k)}</td><td>${n}</td><td>${avg}</td><td>${b}</td><td>${st}</td><td>${last}</td></tr>`
+        ).join('')}</tbody>
+      </table>
       <h3>Trend</h3>
       <canvas id="trend" width="640" height="220"></canvas>
       <h3>By Alley</h3>
       <table class="tbl">
         <thead><tr><th>Alley</th><th>Games</th><th>Avg</th><th>Best</th></tr></thead>
         <tbody>${alleyRows.map(([k, n, avg, b]) =>
-          `<tr><td>${k.replace(/</g, '&lt;')}</td><td>${n}</td><td>${avg}</td><td>${b}</td></tr>`
+          `<tr><td>${esc(k)}</td><td>${n}</td><td>${avg}</td><td>${b}</td></tr>`
         ).join('')}</tbody>
       </table>
     </div>`;
+  wireChips(el, onPickPlayer);
+  el.querySelectorAll('table.tbl tbody tr[data-p]').forEach((tr) =>
+    tr.addEventListener('click', () => onPickPlayer(tr.dataset.p || null))
+  );
   drawTrend(el.querySelector('#trend'), sorted);
 }
 

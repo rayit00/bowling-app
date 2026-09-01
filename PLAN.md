@@ -53,6 +53,7 @@ game = {
 ## Versioning
 - v1.0 — initial release (all 4 phases)
 - v15 — rack fixed to standard layout (7-8-9-10 back, head pin 1 front); split callout on pad label; Undo button; HTML-escaping everywhere (XSS-safe); sessions sorted by recency; "No session" row now navigates; manifest `id` added; SW cache bowltrack-v15
+- v16 — multi-bowler: Player field on the form (with autocomplete + last-player memory); player shown on list rows + game detail; player filter chips on Games and Stats; Head-to-Head table (avg/best/strikes per player, tap a row to filter); stats dashboard follows the selected player; player survives export/import; SW cache bowltrack-v16
 
 ## Test Gates
 - Phase 1: `node tests/score.test.mjs` (perfect game 300, all spares 150, gutters 0, 10th-frame cases, validation errors)
